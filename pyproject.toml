@@ -18,8 +18,10 @@ classifiers = [
 ]
 dependencies = [
     "polars",
+    "numpy",
     "pyyaml",
     "pytest",
+    "hll-rust-py",
 ]
 
 [project.urls]
