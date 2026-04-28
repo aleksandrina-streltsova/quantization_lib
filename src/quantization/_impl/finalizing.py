@@ -83,8 +83,9 @@ def collect_frame_statistics_impl(
                                                          is_merge=False)
     frame_iterator = _get_frame_iterator(frame, chunk_size)
 
-    for chunk in frame_iterator:
+    for i, chunk in enumerate(frame_iterator):
         chunk = chunk.collect() if isinstance(chunk, pl.LazyFrame) else chunk
+        logging.info("Collecting frame statistics for chunk %d: initial_size=%d.", i, chunk.height)
 
         # 1. Collect hists for ECDF (we'll merge the hists and get ECDF at the end)
         for col in ecdf_columns:
@@ -96,6 +97,10 @@ def collect_frame_statistics_impl(
                 step = 0.01
             expr = expr_round_fixed_step_impl(col, step, clip=None, use_integer_indices=False)
             hist = chunk.select(expr.alias(col)).to_series().value_counts()
+            logging.info(
+                "Collected ECDF value_counts for chunk %d, column `%s`: size=%d.",
+                i, col, hist.height,
+            )
             column2hists[col].append(hist)
 
         # 2. Update unique signature counts for each factor
