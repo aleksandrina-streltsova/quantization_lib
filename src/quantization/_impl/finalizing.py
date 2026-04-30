@@ -81,7 +81,9 @@ def collect_frame_statistics_impl(
         else:
             chunk_size = _calculate_best_chunk_size_impl(schema, factor2config[min(factors)], available_memory_gb,
                                                          is_merge=False)
+    logging.info("Using chunk size=%d.", chunk_size)
     frame_iterator = _get_frame_iterator(frame, chunk_size)
+    logging.info("Collected frame iterator.")
 
     for i, chunk in enumerate(frame_iterator):
         chunk = chunk.collect() if isinstance(chunk, pl.LazyFrame) else chunk
