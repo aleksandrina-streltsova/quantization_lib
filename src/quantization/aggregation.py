@@ -189,6 +189,7 @@ class AggMean(Aggregation):
 class AggCircularMean(Aggregation):
     """
     Circular mean aggregation for columns with a periodic range.
+    Besides the mean and the count, outputs the mean resultant length (`__circmeanr`, in [0, 1]) to merge exactly.
     """
 
     def __init__(self, low: float, high: float) -> None:

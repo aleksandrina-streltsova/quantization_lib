@@ -81,8 +81,10 @@ def test_multiple_quant_default_agg():
         "v4__meancount": [1, 2, 1, 1],
         "v3__circmean": [5, 1.5, -1, 3],
         "v3__circmeancount": [1, 2, 1, 1],
+        "v3__circmeanr": [1.0, 0.9238795325112867, 1.0, 1.0],
         "v4__circmean": [-2, 1.5, 2, 2],
         "v4__circmeancount": [1, 2, 1, 1],
+        "v4__circmeanr": [1.0, 0.9238795325112867, 1.0, 1.0],
         "v3__off": [[5], [1, 2], [-1], [3]],
         "v4__off": [[-2], [1, 2], [2], [2]],
         "v3__valuecounts": [

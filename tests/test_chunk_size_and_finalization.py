@@ -85,7 +85,7 @@ def test_calculate_best_chunk_size_impl_quantize_scenarios(scenario, expected_ch
         ("single_per_column", 36),
         ("single_default_non_quant", 28),
         ("single_default_quant", 28),
-        ("all", 4),
+        ("all", 3),  # __circmeanr adds a Float64 column per circular mean
     ],
 )
 def test_calculate_best_chunk_size_impl_merge_scenarios(scenario, expected_chunk_size):

@@ -75,6 +75,7 @@ def test_merge_multiple_non_empty_frames():
         "v3__meancount": [2, 1],
         "v3__circmean": [3.0, 3.0],
         "v3__circmeancount": [2, 1],
+        "v3__circmeanr": [1.0, 1.0],
         "v3__off": [[1, 2], [3]],
         "v3__valuecounts": [
             [{"v3": 1, "struct_count": 1}, {"v3": 2, "struct_count": 1}],
@@ -86,6 +87,7 @@ def test_merge_multiple_non_empty_frames():
         "v4__meancount": [2, 1],
         "v4__circmean": [-2.0, 2.0],
         "v4__circmeancount": [2, 1],
+        "v4__circmeanr": [1.0, 1.0],
         "v4__off": [[1, 2], [2]],
         "v4__valuecounts": [
             [{"v4": 1, "struct_count": 1}, {"v4": 2, "struct_count": 1}],
@@ -105,6 +107,7 @@ def test_merge_multiple_non_empty_frames():
         "v3__meancount": [1, 1],
         "v3__circmean": [-1.0, 5.0],
         "v3__circmeancount": [1, 1],
+        "v3__circmeanr": [1.0, 1.0],
         "v3__off": [[-1], [5]],
         "v3__valuecounts": [
             [{"v3": -1, "struct_count": 1}],
@@ -116,6 +119,7 @@ def test_merge_multiple_non_empty_frames():
         "v4__meancount": [1, 1],
         "v4__circmean": [2.0, -2.0],
         "v4__circmeancount": [1, 1],
+        "v4__circmeanr": [1.0, 1.0],
         "v4__off": [[2], [-2]],
         "v4__valuecounts": [
             [{"v4": 2, "struct_count": 1}],
@@ -149,8 +153,10 @@ def test_merge_multiple_non_empty_frames():
         "v4__meancount": [1, 3, 1],
         "v3__circmean": [5.0, 3.0, 3.0],
         "v3__circmeancount": [1, 3, 1],
+        "v3__circmeanr": [1.0, 1 / 3, 1.0],
         "v4__circmean": [-2.0, -2.0, 2.0],
         "v4__circmeancount": [1, 3, 1],
+        "v4__circmeanr": [1.0, 1 / 3, 1.0],
         "v3__off": [[5], [1, 2, -1], [3]],
         "v4__off": [[-2], [1, 2, 2], [2]],
         "v3__valuecounts": [

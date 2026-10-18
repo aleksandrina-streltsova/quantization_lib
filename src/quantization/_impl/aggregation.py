@@ -40,22 +40,27 @@ def expr_merge_mean_impl(column: str, suffix: str) -> list[pl.Expr]:
 
 def expr_quantize_circ_mean_impl(column: str, low: float, high: float, suffix: str) -> list[pl.Expr]:
     angle = _to_angle(pl.col(column), low, high)
-    angle_mean = pl.arctan2(angle.sin().mean(), angle.cos().mean())
-    circ_mean = _from_angle(angle_mean, low, high)
+    sin_mean, cos_mean = angle.sin().mean(), angle.cos().mean()
+    circ_mean = _from_angle(pl.arctan2(sin_mean, cos_mean), low, high)
+    # Mean resultant length: merging weights each partial mean by it, not only by its count
+    r = (sin_mean.pow(2) + cos_mean.pow(2)).sqrt()
 
     count = (pl.len() - pl.col(column).null_count()).alias(f"{column}{suffix}count")
-    return [circ_mean.alias(f"{column}{suffix}"), count]
+    return [circ_mean.alias(f"{column}{suffix}"), count, r.alias(f"{column}{suffix}r")]
 
 
 def expr_merge_circ_mean_impl(column: str, low: float, high: float, suffix: str) -> list[pl.Expr]:
     count = pl.col(f"{column}{suffix}count")
     count_all = pl.col(f"{column}{suffix}count").sum().alias(f"{column}{suffix}count")
 
+    # Sum of the partial resultant vectors (length count * R), so the result doesn't depend on the chunking
     angle = _to_angle(pl.col(f"{column}{suffix}"), low, high)
-    angle_mean = pl.arctan2((angle.sin() * count).sum(), (angle.cos() * count).sum())
-    circ_mean = _from_angle(angle_mean, low, high)
+    weight = count * pl.col(f"{column}{suffix}r")
+    sin_sum, cos_sum = (angle.sin() * weight).sum(), (angle.cos() * weight).sum()
+    circ_mean = _from_angle(pl.arctan2(sin_sum, cos_sum), low, high)
+    r = (sin_sum.pow(2) + cos_sum.pow(2)).sqrt() / count.sum()
 
-    return [circ_mean.alias(f"{column}{suffix}"), count_all]
+    return [circ_mean.alias(f"{column}{suffix}"), count_all, r.alias(f"{column}{suffix}r")]
 
 
 def _to_angle(x: pl.Expr, low: float, high: float) -> pl.Expr:
