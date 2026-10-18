@@ -48,6 +48,7 @@ def quantize_streaming_impl(
     available_memory_gb: float | None = None,
     chunk_size: int | None = None,
     preprocess: Callable[[pl.DataFrame], pl.DataFrame] | None = None,
+    skip_existing: bool = False,
 ) -> None:
     assert chunk_size is not None or available_memory_gb is not None, \
         "Either `chunk_size` or `available_memory_gb` must be provided."
@@ -62,9 +63,16 @@ def quantize_streaming_impl(
     frame_iterator = _get_frame_iterator(frame, chunk_size)
 
     for i, chunk in enumerate(frame_iterator):
+        filepath = output_dir / f"quantized_{i}.parquet"
+        # A skipped chunk of a lazy frame is still read: collect_batches can't start at a later chunk,
+        # and with row filters in the frame, finding where a chunk starts needs every row before it
+        if skip_existing and filepath.exists():
+            logging.info("Skipping chunk %d: %s exists.", i, filepath)
+            continue
         chunk = _collect_and_preprocess(chunk, preprocess)
+        logging.info("Quantizing chunk %d: %d rows.", i, chunk.height)
         quantized = quantize_impl(chunk, config)
-        quantized.write_parquet(output_dir / f"quantized_{i}.parquet")
+        quantized.write_parquet(filepath)
 
 
 def merge_streaming_impl(

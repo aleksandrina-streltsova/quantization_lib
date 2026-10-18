@@ -98,7 +98,8 @@ quantize each one with the same finalized config, and then call
 For larger workflows, use:
 
 - `quantize_streaming(frame, config, chunk_size=...)` to write quantized parquet
-  chunks to `config.output_dir`.
+  chunks to `config.output_dir`. Pass `skip_existing=True` to resume an
+  interrupted run: chunks already written are not quantized again.
 - `merge_streaming(frames_quant, config, chunk_size=...)` to merge many
   quantized frames hierarchically without loading every intermediate result at
   once.

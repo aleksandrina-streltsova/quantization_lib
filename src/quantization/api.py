@@ -123,6 +123,7 @@ def quantize_streaming(
     available_memory_gb: float | None = None,
     chunk_size: int | None = None,
     preprocess: Callable[[pl.DataFrame], pl.DataFrame] | None = None,
+    skip_existing: bool = False,
 ):
     """
     Performs streaming quantization of the data.
@@ -131,8 +132,11 @@ def quantize_streaming(
     If both are provided, `chunk_size` is used.
     `preprocess` is an optional function applied to each collected chunk before quantization
     (see :py:func:`collect_frame_statistics`).
+    With `skip_existing`, chunks whose `quantized_<i>.parquet` already exists in `config.output_dir` are not
+    quantized again, e.g. to resume an interrupted run with the same frame, config and chunk size.
+    Chunks of a lazy frame are still read to be skipped.
     """
-    return quantize_streaming_impl(frame, config, available_memory_gb, chunk_size, preprocess)
+    return quantize_streaming_impl(frame, config, available_memory_gb, chunk_size, preprocess, skip_existing)
 
 
 def merge_streaming(

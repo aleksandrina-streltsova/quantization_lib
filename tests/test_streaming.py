@@ -78,6 +78,30 @@ def _double_x(chunk: pl.DataFrame) -> pl.DataFrame:
 
 
 @pytest.mark.parametrize("as_lazy", [False, True])
+def test_quantize_streaming_skip_existing(tmp_path, as_lazy):
+    df = pl.DataFrame({"val": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]})
+    frame = df.lazy() if as_lazy else df
+    config = QuantizationConfig(
+        quant_column_configs=[FixedStepQuantColumnConfig(name="val", step=2.0)],
+        agg_plan=AggregationPlan(per_column={"val": "off"}, default_non_quant=[]),
+        output_dir=tmp_path,
+    )
+    quantize_streaming(frame, config, chunk_size=2)
+    expected = {p.name: pl.read_parquet(p) for p in tmp_path.glob("*.parquet")}
+
+    # As after an interrupted run: chunk 1 is written (here replaced by a marker), chunk 3 is missing
+    marker = pl.DataFrame({"marker": [0]})
+    marker.write_parquet(tmp_path / "quantized_1.parquet")
+    (tmp_path / "quantized_3.parquet").unlink()
+
+    quantize_streaming(frame, config, chunk_size=2, skip_existing=True)
+
+    assert sorted(p.name for p in tmp_path.glob("*.parquet")) == sorted(expected)
+    assert_frame_equal(pl.read_parquet(tmp_path / "quantized_1.parquet"), marker)
+    assert_frame_equal(pl.read_parquet(tmp_path / "quantized_3.parquet"), expected["quantized_3.parquet"])
+
+
+@pytest.mark.parametrize("as_lazy", [False, True])
 def test_quantize_streaming_with_preprocess(tmp_path, as_lazy):
     df = pl.DataFrame({"x": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]})
     frame = df.lazy() if as_lazy else df
