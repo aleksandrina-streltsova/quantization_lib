@@ -1,10 +1,11 @@
 from collections import defaultdict
 import logging
-from typing import Iterable
+from typing import Iterable, Callable
 
 import hll_rust_py
 import polars as pl
-from quantization._impl.quantization import _get_frame_iterator, quantize_impl, \
+from quantization._impl.quantization import _get_frame_iterator, quantize_impl, _get_preprocessed_schema, \
+    _collect_and_preprocess, \
     _calculate_best_chunk_size_impl
 from quantization._impl.rounding import expr_round_fixed_step_impl
 from quantization.aggregation import AggregationPlan
@@ -50,12 +51,13 @@ def collect_frame_statistics_impl(
     factors: list[float] | None = None,
     available_memory_gb: float | None = None,
     chunk_size: int | None = None,
+    preprocess: Callable[[pl.DataFrame], pl.DataFrame] | None = None,
 ) -> FrameStatistics:
     ecdf_columns = quant_columns if ecdf_columns is None else ecdf_columns
     if factors is None:
         factors = [1., 2., 4., 6., 8., 10.]
 
-    schema = frame.collect_schema() if isinstance(frame, pl.LazyFrame) else frame.schema
+    schema = _get_preprocessed_schema(frame, preprocess)
 
     factor2config = {
         f: QuantizationConfig(
@@ -86,7 +88,7 @@ def collect_frame_statistics_impl(
     logging.info("Collected frame iterator.")
 
     for i, chunk in enumerate(frame_iterator):
-        chunk = chunk.collect() if isinstance(chunk, pl.LazyFrame) else chunk
+        chunk = _collect_and_preprocess(chunk, preprocess)
         logging.info("Collecting frame statistics for chunk %d: initial_size=%d.", i, chunk.height)
 
         # 1. Collect hists for ECDF (we'll merge the hists and get ECDF at the end)

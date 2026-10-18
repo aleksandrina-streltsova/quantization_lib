@@ -1,7 +1,7 @@
 import pathlib
 import logging
 from collections import deque, defaultdict
-from typing import Iterable, Any, Iterator
+from typing import Iterable, Any, Iterator, Callable
 
 import polars as pl
 from quantization._impl.logging_helpers import _QuantizationLogger
@@ -47,11 +47,12 @@ def quantize_streaming_impl(
     config: QuantizationConfig,
     available_memory_gb: float | None = None,
     chunk_size: int | None = None,
+    preprocess: Callable[[pl.DataFrame], pl.DataFrame] | None = None,
 ) -> None:
     assert chunk_size is not None or available_memory_gb is not None, \
         "Either `chunk_size` or `available_memory_gb` must be provided."
     if chunk_size is None:
-        schema = frame.collect_schema() if isinstance(frame, pl.LazyFrame) else frame.schema
+        schema = _get_preprocessed_schema(frame, preprocess)
         chunk_size = _calculate_best_chunk_size_impl(schema, config, available_memory_gb, is_merge=False)
     assert chunk_size > 0, "`chunk_size` must be positive."
 
@@ -61,7 +62,7 @@ def quantize_streaming_impl(
     frame_iterator = _get_frame_iterator(frame, chunk_size)
 
     for i, chunk in enumerate(frame_iterator):
-        chunk = chunk.collect() if isinstance(chunk, pl.LazyFrame) else chunk
+        chunk = _collect_and_preprocess(chunk, preprocess)
         quantized = quantize_impl(chunk, config)
         quantized.write_parquet(output_dir / f"quantized_{i}.parquet")
 
@@ -282,6 +283,16 @@ def _flatten(x: Iterable) -> list:
             result.append(item)
 
     return result
+
+
+def _get_preprocessed_schema(frame: Frame, preprocess: Callable[[pl.DataFrame], pl.DataFrame] | None) -> pl.Schema:
+    schema = frame.collect_schema() if isinstance(frame, pl.LazyFrame) else frame.schema
+    return schema if preprocess is None else preprocess(pl.DataFrame(schema=schema)).schema
+
+
+def _collect_and_preprocess(chunk: Frame, preprocess: Callable[[pl.DataFrame], pl.DataFrame] | None) -> pl.DataFrame:
+    chunk = chunk.collect() if isinstance(chunk, pl.LazyFrame) else chunk
+    return chunk if preprocess is None else preprocess(chunk)
 
 
 def _get_frame_iterator(frame: Frame, chunk_size: int) -> Iterator[Frame]:

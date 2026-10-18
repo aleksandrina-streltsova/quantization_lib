@@ -1,4 +1,6 @@
-from typing import Iterable
+from typing import Iterable, Callable
+
+import polars as pl
 
 from quantization._impl.quantization import (
     quantize_impl, merge_quantized_impl,
@@ -39,6 +41,7 @@ def collect_frame_statistics(
     factors: list[float] | None = None,
     available_memory_gb: float | None = None,
     chunk_size: int | None = None,
+    preprocess: Callable[[pl.DataFrame], pl.DataFrame] | None = None,
 ) -> FrameStatistics:
     """
     Collects statistics used for quantization-config finalization.
@@ -55,6 +58,9 @@ def collect_frame_statistics(
         factors: Scaling factors to evaluate. If None, defaults are used.
         available_memory_gb: Available memory budget in GB for auto chunk-size estimation.
         chunk_size: Explicit chunk size (number of rows). If provided, takes precedence over memory-based estimation.
+        preprocess: Optional function applied to each collected chunk, e.g. to derive the quantization columns.
+            Deriving columns per chunk instead of in a lazy `frame` keeps Polars from reading far ahead of
+            the processing.
 
     Returns:
         FrameStatistics: Collected ECDF and factor-to-size estimates.
@@ -67,6 +73,7 @@ def collect_frame_statistics(
         factors=factors,
         available_memory_gb=available_memory_gb,
         chunk_size=chunk_size,
+        preprocess=preprocess,
     )
 
 
@@ -115,14 +122,17 @@ def quantize_streaming(
     config: QuantizationConfig,
     available_memory_gb: float | None = None,
     chunk_size: int | None = None,
+    preprocess: Callable[[pl.DataFrame], pl.DataFrame] | None = None,
 ):
     """
     Performs streaming quantization of the data.
 
     Either `chunk_size` or `available_memory_gb` must be provided.
     If both are provided, `chunk_size` is used.
+    `preprocess` is an optional function applied to each collected chunk before quantization
+    (see :py:func:`collect_frame_statistics`).
     """
-    return quantize_streaming_impl(frame, config, available_memory_gb, chunk_size)
+    return quantize_streaming_impl(frame, config, available_memory_gb, chunk_size, preprocess)
 
 
 def merge_streaming(
