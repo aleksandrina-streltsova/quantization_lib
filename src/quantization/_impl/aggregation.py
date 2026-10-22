@@ -31,7 +31,9 @@ def expr_quantize_mean_impl(column: str, suffix: str) -> list[pl.Expr]:
 
 def expr_merge_mean_impl(column: str, suffix: str) -> list[pl.Expr]:
     count_all = pl.col(f"{column}{suffix}count").sum()
-    mean_expr = (pl.col(f"{column}{suffix}") * pl.col(f"{column}{suffix}count")).sum() / count_all
+    # Null, not 0 / 0 = NaN, when no part has values: a NaN would turn every later merge into NaN (NaN * 0 = NaN)
+    mean_expr = pl.when(count_all > 0).then(
+        (pl.col(f"{column}{suffix}") * pl.col(f"{column}{suffix}count")).sum() / count_all)
     return [
         mean_expr.alias(f"{column}{suffix}"),
         count_all,
@@ -57,8 +59,10 @@ def expr_merge_circ_mean_impl(column: str, low: float, high: float, suffix: str)
     angle = _to_angle(pl.col(f"{column}{suffix}"), low, high)
     weight = count * pl.col(f"{column}{suffix}r")
     sin_sum, cos_sum = (angle.sin() * weight).sum(), (angle.cos() * weight).sum()
-    circ_mean = _from_angle(pl.arctan2(sin_sum, cos_sum), low, high)
-    r = (sin_sum.pow(2) + cos_sum.pow(2)).sqrt() / count.sum()
+    # Null when no part has values, as in the mean: otherwise low and 0 / 0 = NaN
+    has_values = count.sum() > 0
+    circ_mean = pl.when(has_values).then(_from_angle(pl.arctan2(sin_sum, cos_sum), low, high))
+    r = pl.when(has_values).then((sin_sum.pow(2) + cos_sum.pow(2)).sqrt() / count.sum())
 
     return [circ_mean.alias(f"{column}{suffix}"), count_all, r.alias(f"{column}{suffix}r")]
 

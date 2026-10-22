@@ -62,3 +62,27 @@ def test_circular_mean_merge_matches_single_pass(agg_circ):
                              pl.DataFrame({"time": values[split:]}).select(agg_circ.expr_quantize("time"))])
         merged = partial.select(agg_circ.expr_merge("time"))
         assert_frame_equal(merged, single_pass, check_dtypes=False)
+
+
+def test_circular_mean_merge_all_null(agg_circ):
+    # Parts with no values give a null mean and length, not low and 0 / 0 = NaN
+    quantized_data = {
+        "time__circmean": pl.Series([None, None], dtype=pl.Float64),
+        "time__circmeancount": [0, 0],
+        "time__circmeanr": pl.Series([None, None], dtype=pl.Float64),
+    }
+    expected_data = {
+        "time__circmean": pl.Series([None], dtype=pl.Float64),
+        "time__circmeancount": [0],
+        "time__circmeanr": pl.Series([None], dtype=pl.Float64),
+    }
+    run_merge_test(agg_circ, quantized_data, expected_data, column="time")
+
+
+def test_circular_mean_merge_twice_with_all_null_part(agg_circ):
+    # A merged all-null part must not turn later merges into NaN
+    all_null = pl.DataFrame({"time": pl.Series([None, None], dtype=pl.Float64)}).select(agg_circ.expr_quantize("time"))
+    merged_all_null = pl.concat([all_null, all_null]).select(agg_circ.expr_merge("time"))
+    valued = pl.DataFrame({"time": [23.0, 1.0, 2.0]}).select(agg_circ.expr_quantize("time"))
+    merged = pl.concat([merged_all_null, valued], how="vertical_relaxed").select(agg_circ.expr_merge("time"))
+    assert_frame_equal(merged, valued, check_dtypes=False)
